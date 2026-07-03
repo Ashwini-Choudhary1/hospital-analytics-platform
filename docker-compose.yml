@@ -1,0 +1,148 @@
+version: "3.9"
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.9.2-python3.10
+  environment:
+    - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+    - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/airflow
+    - AIRFLOW__CORE__LOAD_EXAMPLES=false
+    - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=false
+    - AIRFLOW_UID=${AIRFLOW_UID:-50000}
+    - _PIP_ADDITIONAL_REQUIREMENTS=dbt-postgres pandas psycopg2-binary faker minio sqlalchemy
+    - POSTGRES_HOST=postgres
+    - POSTGRES_PORT=5432
+    - POSTGRES_USER=${POSTGRES_USER:-postgres}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+    - POSTGRES_DB=${POSTGRES_DB:-hospital_analytics}
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/logs:/opt/airflow/logs
+    - ./airflow/plugins:/opt/airflow/plugins
+    - ./dbt:/opt/airflow/dbt
+    - ./scripts:/opt/airflow/scripts
+    - ./data:/opt/airflow/data
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  # ==========================================
+  # PostgreSQL (Data Warehouse & Metadata)
+  # ==========================================
+  postgres:
+    image: postgres:16
+    container_name: hospital_postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-hospital_analytics}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-hospital_analytics}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # MinIO (Local Cloud Data Lake / S3)
+  # ==========================================
+  minio:
+    image: minio/minio:latest
+    container_name: hospital_minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  createbuckets:
+    image: minio/mc:latest
+    container_name: hospital_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add myminio http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin};
+      /usr/bin/mc mb -p myminio/hospital-raw-data;
+      /usr/bin/mc policy set download myminio/hospital-raw-data;
+      exit 0;
+      "
+
+  # ==========================================
+  # Metabase (BI Dashboards)
+  # ==========================================
+  metabase:
+    image: metabase/metabase:latest
+    container_name: hospital_metabase
+    restart: unless-stopped
+    ports:
+      - "${METABASE_PORT:-3000}:3000"
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabase
+      MB_DB_PORT: 5432
+      MB_DB_USER: ${POSTGRES_USER:-postgres}
+      MB_DB_PASS: ${POSTGRES_PASSWORD:-postgres}
+      MB_DB_HOST: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ==========================================
+  # Apache Airflow (Workflow Orchestrator)
+  # ==========================================
+  airflow-init:
+    <<: *airflow-common
+    container_name: hospital_airflow_init
+    command: >
+      bash -c "
+      airflow db migrate &&
+      airflow users create --username ${AIRFLOW_USERNAME:-admin} --password ${AIRFLOW_PASSWORD:-admin} --firstname Admin --lastname User --role Admin --email admin@hospital.local || true
+      "
+    restart: "no"
+
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: hospital_airflow_webserver
+    restart: always
+    command: webserver
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: hospital_airflow_scheduler
+    restart: always
+    command: scheduler
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data:
+  minio_data:

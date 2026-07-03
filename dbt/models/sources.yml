@@ -1,0 +1,15 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: "Raw MIMIC-IV clinical hospital records loaded in the Bronze Medallion layer."
+    schema: bronze
+    tables:
+      - name: departments
+        description: "Hospital department definitions, bed capacities, and floor locations."
+      - name: patients
+        description: "Patient demographic profiles, insurance coverage, and registration dates."
+      - name: admissions
+        description: "Patient hospital admission events, discharge dates, costs, and dispositions."
+      - name: diagnoses
+        description: "ICD-10 clinical diagnosis codes assigned during hospital admissions."

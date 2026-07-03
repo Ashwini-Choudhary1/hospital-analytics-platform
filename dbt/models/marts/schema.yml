@@ -1,0 +1,47 @@
+version: 2
+
+models:
+  - name: fct_admissions
+    description: "Central patient encounter fact table joining admissions, patients, departments, and diagnoses."
+    columns:
+      - name: admission_id
+        description: "Unique primary key for each hospital admission."
+        tests:
+          - unique
+          - not_null
+      - name: patient_id
+        description: "Foreign key referencing patient profile."
+        tests:
+          - not_null
+      - name: department_id
+        description: "Foreign key referencing hospital department."
+        tests:
+          - not_null
+
+  - name: mart_readmission_rates
+    description: "30-day patient readmission metric summary grouped by department and admission type."
+    columns:
+      - name: department_name
+        tests:
+          - not_null
+      - name: readmission_rate_pct
+        description: "Percentage of admissions that resulted in a readmission within 30 days."
+
+  - name: mart_department_workload
+    description: "Hospital operational workload KPIs including bed occupancy, average LOS, and total revenue per department."
+    columns:
+      - name: department_id
+        tests:
+          - unique
+          - not_null
+      - name: total_admissions
+        tests:
+          - not_null
+
+  - name: mart_clinical_diagnoses
+    description: "Clinical summary of mortality rates, treatment costs, and patient demographics per ICD-10 code."
+    columns:
+      - name: icd10_code
+        tests:
+          - unique
+          - not_null
