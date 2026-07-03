@@ -187,7 +187,7 @@ Business-ready fact and dimension tables powering dashboards.
 * [x] Advanced SQL Analytics & Window Functions
 * [x] dbt Models & Multi-Engine Profile (Postgres + Snowflake)
 * [x] Data Quality Tests (100% Passing)
-* [ ] Airflow Automated Pipelines
+* [x] Airflow Automated Pipelines
 * [ ] Metabase Executive Dashboards
 * [ ] CI/CD
 

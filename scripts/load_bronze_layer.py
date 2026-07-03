@@ -76,10 +76,9 @@ def load_to_postgres():
     db_url = f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
     engine = create_engine(db_url)
     
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         # Ensure bronze schema exists
         conn.execute(text("CREATE SCHEMA IF NOT EXISTS bronze;"))
-        conn.commit()
         
     for filename in ["departments.csv", "patients.csv", "admissions.csv", "diagnoses.csv"]:
         file_path = os.path.join(DATA_DIR, filename)
@@ -88,12 +87,19 @@ def load_to_postgres():
             print(f"  📊 Ingesting {filename} into PostgreSQL [bronze.{table_name}]...")
             df = pd.read_csv(file_path)
             
+            # Truncate existing table if it exists so dependent Silver views don't break
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text(f"TRUNCATE TABLE bronze.{table_name} CASCADE;"))
+            except Exception as e:
+                print(f"    ⚠️ Notice: Could not truncate bronze.{table_name} ({e})")
+            
             # Load into Postgres bronze schema
             df.to_sql(
                 name=table_name,
                 con=engine,
                 schema="bronze",
-                if_exists="replace",
+                if_exists="append",
                 index=False
             )
             print(f"    ✅ Ingested {len(df)} records into bronze.{table_name}")
