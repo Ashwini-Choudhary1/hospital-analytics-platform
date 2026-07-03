@@ -50,7 +50,7 @@ QUERIES = [
         "name": "Department Workload & Cost Analysis",
         "description": "Total admissions, average stay duration, and total billing cost per department.",
         "display": "bar",
-        "sql": "SELECT department_name, total_admissions, avg_length_of_stay_days, ROUND(total_hospital_cost, 2) AS total_hospital_cost FROM gold.mart_department_workload ORDER BY total_admissions DESC;",
+        "sql": "SELECT department_name, total_admissions, avg_length_of_stay_days, ROUND(total_revenue, 2) AS total_revenue FROM gold.mart_department_workload ORDER BY total_admissions DESC;",
         "viz_settings": {
             "graph.dimensions": ["department_name"],
             "graph.metrics": ["total_admissions"],
@@ -62,10 +62,10 @@ QUERIES = [
         "name": "Top 10 Clinical Diagnoses",
         "description": "Most frequent primary ICD-10 clinical diagnoses treated across the hospital.",
         "display": "row",
-        "sql": "SELECT diagnosis_description, total_cases, ROUND(avg_cost_per_case, 2) AS avg_cost_per_case FROM gold.mart_clinical_diagnoses WHERE diagnosis_description != 'No Primary Diagnosis Recorded' ORDER BY total_cases DESC LIMIT 10;",
+        "sql": "SELECT diagnosis_description, total_admissions, ROUND(avg_treatment_cost, 2) AS avg_treatment_cost FROM gold.mart_clinical_diagnoses WHERE diagnosis_description != 'No Primary Diagnosis Recorded' ORDER BY total_admissions DESC LIMIT 10;",
         "viz_settings": {
             "graph.dimensions": ["diagnosis_description"],
-            "graph.metrics": ["total_cases"],
+            "graph.metrics": ["total_admissions"],
             "graph.colors": ["#88BF4D"]
         },
         "layout": {"col": 9, "row": 3, "sizeX": 9, "sizeY": 7}
@@ -74,7 +74,7 @@ QUERIES = [
         "name": "30-Day Readmission Risk Breakdown",
         "description": "Comparative clinical risk analysis of readmission rates by department.",
         "display": "table",
-        "sql": "SELECT department_name, total_discharges, readmitted_30_days_count, readmission_rate_pct, avg_los_days, high_risk_readmissions FROM gold.mart_readmission_rates ORDER BY readmission_rate_pct DESC;",
+        "sql": "SELECT department_name, admission_type, total_admissions, readmission_count, readmission_rate_pct FROM gold.mart_readmission_rates ORDER BY readmission_rate_pct DESC;",
         "viz_settings": {},
         "layout": {"col": 0, "row": 10, "sizeX": 18, "sizeY": 7}
     }
@@ -160,7 +160,6 @@ class MetabaseAPI:
 
     def create_card(self, db_id, collection_id, query_info):
         name = query_info["name"]
-        print(f"  📊 Creating card: '{name}'...")
         payload = {
             "name": name,
             "description": query_info["description"],
@@ -173,6 +172,19 @@ class MetabaseAPI:
             "display": query_info["display"],
             "visualization_settings": query_info["viz_settings"]
         }
+        
+        # Check if card already exists to update instead of duplicate
+        try:
+            cards = self._request("card")
+            for c in cards:
+                if c.get("name") == name and c.get("collection_id") == collection_id:
+                    print(f"  📊 Updating existing card: '{name}' [ID: {c['id']}]...")
+                    self._request(f"card/{c['id']}", method="PUT", data=payload)
+                    return c["id"]
+        except Exception:
+            pass
+
+        print(f"  📊 Creating card: '{name}'...")
         res = self._request("card", method="POST", data=payload)
         return res["id"]
 

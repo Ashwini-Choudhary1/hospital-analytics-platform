@@ -42,14 +42,14 @@ FROM gold.mart_readmission_rates;
 -- ------------------------------------------------------------------------------
 -- Card 4: Department Workload & Financial Analysis (Column / Bar Chart)
 -- ------------------------------------------------------------------------------
--- Description: Total admissions, average stay duration, and total billing cost per department.
+-- Description: Total admissions, average stay duration, and total billing revenue per department.
 -- Visualization Suggestion: Column Chart (X: department_name, Y: total_admissions)
 -- ------------------------------------------------------------------------------
 SELECT 
     department_name,
     total_admissions,
     avg_length_of_stay_days,
-    ROUND(total_hospital_cost, 2) AS total_hospital_cost
+    ROUND(total_revenue, 2) AS total_revenue
 FROM gold.mart_department_workload
 ORDER BY total_admissions DESC;
 
@@ -58,15 +58,15 @@ ORDER BY total_admissions DESC;
 -- Card 5: Top 10 Clinical Diagnoses (Horizontal Bar Chart)
 -- ------------------------------------------------------------------------------
 -- Description: Most frequent primary ICD-10 clinical diagnoses treated across the hospital.
--- Visualization Suggestion: Horizontal Bar Chart (X: total_cases, Y: diagnosis_description)
+-- Visualization Suggestion: Horizontal Bar Chart (X: total_admissions, Y: diagnosis_description)
 -- ------------------------------------------------------------------------------
 SELECT 
     diagnosis_description,
-    total_cases,
-    ROUND(avg_cost_per_case, 2) AS avg_cost_per_case
+    total_admissions,
+    ROUND(avg_treatment_cost, 2) AS avg_treatment_cost
 FROM gold.mart_clinical_diagnoses
 WHERE diagnosis_description != 'No Primary Diagnosis Recorded'
-ORDER BY total_cases DESC
+ORDER BY total_admissions DESC
 LIMIT 10;
 
 
@@ -78,10 +78,9 @@ LIMIT 10;
 -- ------------------------------------------------------------------------------
 SELECT 
     department_name,
-    total_discharges,
-    readmitted_30_days_count,
-    readmission_rate_pct,
-    avg_los_days,
-    high_risk_readmissions
+    admission_type,
+    total_admissions,
+    readmission_count,
+    readmission_rate_pct
 FROM gold.mart_readmission_rates
 ORDER BY readmission_rate_pct DESC;
