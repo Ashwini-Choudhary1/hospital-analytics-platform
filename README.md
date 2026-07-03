@@ -1,10 +1,12 @@
 # 🏥 Hospital Analytics Platform
 
+[![CI/CD Pipeline](https://github.com/Ashwini-Choudhary1/hospital-analytics-platform/actions/workflows/data_pipeline_ci.yml/badge.svg)](https://github.com/Ashwini-Choudhary1/hospital-analytics-platform/actions/workflows/data_pipeline_ci.yml)
+
 An end-to-end healthcare analytics platform that transforms raw hospital data into business-ready insights using modern data analytics tools.
 
 This project simulates a real-world analytics environment where hospital data is ingested, transformed, modeled, and visualized to support operational and clinical decision-making.
 
-> **Project Status:** 🚧 In Development
+> **Project Status:** ✅ 100% Complete & Production Ready
 
 ---
 
@@ -189,7 +191,16 @@ Business-ready fact and dimension tables powering dashboards.
 * [x] Data Quality Tests (100% Passing)
 * [x] Airflow Automated Pipelines
 * [x] Metabase Executive Dashboards
-* [ ] CI/CD
+* [x] CI/CD (GitHub Actions Automated Pipeline Assurance)
+
+---
+
+# 🛡️ CI/CD & Automated Quality Assurance
+
+Every code push and pull request is automatically validated using **GitHub Actions CI/CD** (`.github/workflows/data_pipeline_ci.yml`):
+1. **Linting & Code Formatting:** Validates syntax across all Python ingestion scripts and Airflow DAGs using `flake8` and `black`.
+2. **Ephemeral Data Warehouse CI:** Automatically provisions isolated **PostgreSQL** and **MinIO S3** cloud containers.
+3. **End-to-End Test Execution:** Generates synthetic MIMIC-IV clinical records, performs Medallion lake/warehouse ingestion, executes all `dbt run` Silver and Gold transformations, and enforces 100% passing `dbt test` data quality checks before code can be merged!
 
 ---
 
