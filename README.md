@@ -6,7 +6,7 @@ An end-to-end healthcare analytics platform that transforms raw hospital data in
 
 This project simulates a real-world analytics environment where hospital data is ingested, transformed, modeled, and visualized to support operational and clinical decision-making.
 
-> **Project Status:** ✅ 100% Complete & Production Ready
+> **Project Status:** 100% Complete & Production Ready
 
 ---
 
